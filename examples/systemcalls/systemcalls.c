@@ -16,8 +16,12 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
-    return true;
+    int ret = system(cmd);
+    if(ret < 0){
+        return false;
+    } else {
+        return true;
+    }
 }
 
 /**
@@ -48,6 +52,7 @@ bool do_exec(int count, ...)
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
     command[count] = command[count];
+    
 
 /*
  * TODO:
@@ -58,6 +63,27 @@ bool do_exec(int count, ...)
  *   as second argument to the execv() command.
  *
 */
+    fflush(stdout);
+    pid_t pid = fork();
+    int ret = 0;
+    if(pid == -1) {
+        printf("Failed to fork()\n");
+        return 0;
+    } else if(pid == 0) {
+        ret = execv(command[0], command);
+        if(ret == -1){
+            printf("Failed to execute exec()\n");
+            return 0;
+        }
+        exit(1);
+    }
+    int status;
+    if(waitpid(pid, &status, 0) == -1) {
+        printf("Failed waitpid()\n");
+        return 0;
+    } else if(WEXITSTATUS(status) == 0){
+        return 1;
+    }
 
     va_end(args);
 
