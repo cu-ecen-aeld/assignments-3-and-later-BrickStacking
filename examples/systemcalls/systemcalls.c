@@ -51,7 +51,7 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+    command[count] = command[count];             
     
 
 /*
@@ -69,25 +69,26 @@ bool do_exec(int count, ...)
     if(pid == -1) {
         printf("Failed to fork()\n");
         return 0;
-    } else if(pid == 0) {
+    } else if(pid == 0) { //Create child process
         ret = execv(command[0], command);
         if(ret == -1){
             printf("Failed to execute exec()\n");
-            return 0;
+            exit(1);
         }
-        exit(1);
+    } else{ //Parent process
+        va_end(args); //End capture argument
+        int status;
+        if(waitpid(pid, &status, 0) == -1) {
+            printf("waitpid failed\n");
+        } else{ //Need to check the status of child process
+            if(WIFEXITED(status)){ //Child process terminate normally
+                if(WEXITSTATUS(status) == 0){ //Return exit status of the child process
+                    return true;
+                }
+            }
+        }
     }
-    int status;
-    if(waitpid(pid, &status, 0) == -1) {
-        printf("Failed waitpid()\n");
-        return 0;
-    } else if(WEXITSTATUS(status) == 0){
-        return 1;
-    }
-
-    va_end(args);
-
-    return true;
+    return false;
 }
 
 /**
@@ -118,8 +119,45 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    //Redirect to file can be use by dup2() system call, this will lead all printf() statements to be writen in the file
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0777);
+    if(fd < 0)
+    {
+        printf("fopen system call failed\n");
+        return 0;
+    }
 
-    va_end(args);
-
-    return true;
+    fflush(stdout);
+    pid_t pid = fork();
+    int ret = 0;
+    if(pid == -1) {
+        printf("Failed to fork()\n");
+        return 0;
+    } else if(pid == 0) { //Create child process
+        //Redirect 
+        if(dup2(fd,STDOUT_FILENO) < 0){
+            printf("Failed to dup2()\n");
+            close(fd);
+            return 0;
+        }
+        
+        ret = execv(command[0], command);
+        if(ret == -1){
+            printf("Failed to execute exec()\n");
+            exit(1);
+        }
+    } else{ //Parent process
+        va_end(args); //End capture argument
+        int status;
+        if(waitpid(pid, &status, 0) == -1) {
+            printf("waitpid failed\n");
+        } else{ //Need to check the status of child process
+            if(WIFEXITED(status)){ //Child process terminate normally
+                if(WEXITSTATUS(status) == 0){ //Return exit status of the child process
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
