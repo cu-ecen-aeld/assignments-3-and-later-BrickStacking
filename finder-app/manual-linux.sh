@@ -14,6 +14,7 @@ BUSYBOX_PATH=/home/brick/LearningLinux/outdir/busybox
 FINDER_APP_DIR=$(realpath $(dirname $0))
 ARCH=arm64
 CROSS_COMPILE=aarch64-none-linux-gnu-
+GCC_LIB_PATH=/home/brick/LearningLinux/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/aarch64-none-linux-gnu/libc
 
 if [ $# -lt 1 ]
 then
@@ -43,10 +44,10 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all
     make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} dtbs
     echo "Finish build kernel"
-
 fi
 
 echo "Adding the Image in outdir"
+cp ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ${OUTDIR}
 
 echo "Creating the staging directory for the root filesystem"
 cd "$OUTDIR"
@@ -58,6 +59,13 @@ fi
 
 # TODO: Create necessary base directories
 
+echo "Create new base directoroes"
+mkdir -p ${OUTDIR}/rootfs
+cd ${OUTDIR}/rootfs
+mkdir -p bin dev etc home lib lib64 proc sbin sys tmp usr var
+mkdir -p usr/bin usr/lib /usr/sbin var/log 
+
+echo "Clone source busybox"
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
 then
@@ -65,21 +73,39 @@ git clone git://busybox.net/busybox.git
     cd busybox
     git checkout ${BUSYBOX_VERSION}
     # TODO:  Configure busybox
+    make -j4 distclean
+    make -j4 defconfig
 else
     cd busybox
 fi
 
 # TODO: Make and install busybox
+make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE}
+make CONFIG_PREFIX=${OUTDIR}/rootfs ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} install
 
+#Back to folder rootfs
+cd ${OUTDIR}/rootfs
 echo "Library dependencies"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
-
+echo "Copy dependencies in gcc folder to rootfs"
+cp -L ${GCC_LIB_PATH}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib/ #Copy loader to lib
+cp -L ${GCC_LIB_PATH}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib64/ #Copy loader to lib64
+cp -L ${GCC_LIB_PATH}/lib64/libm.so.6  ${OUTDIR}/rootfs/lib64/
+cp -L ${GCC_LIB_PATH}/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64/
+cp -L ${GCC_LIB_PATH}/lib64/libc.so.6 ${OUTDIR}/rootfs/lib64/
 # TODO: Make device nodes
-
+echo "Create device node"
+sudo mknod -m 666 dev/null c 1 3 #redirect either error or output of a command to this file
+sudo mknod -m 600 dev/console c 5 1 #show messages during startup and shutdown
 # TODO: Clean and build the writer utility
+PATH_FINDER_APP=$(realpath $(dirname $0))
+echo "Jump to folder finder-app: ${PATH_FINDER_APP}"
+cd ${PATH_FINDER_APP}
+make clean
+CROSS_COMPILE=aarch64-none-linux-gnu- make
 
 # TODO: Copy the finder related scripts and executables to the /home directory
 # on the target rootfs
