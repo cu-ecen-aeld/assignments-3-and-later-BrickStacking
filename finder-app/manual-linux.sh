@@ -5,8 +5,9 @@
 set -e
 set -u
 
-#OUTDIR=/tmp/aeld
-OUTDIR=/home/brick/LearningLinux/outdir
+PATH_FINDER_APP=$(realpath $(dirname $0))
+OUTDIR=/tmp/aeld
+#OUTDIR=/home/brick/LearningLinux/outdir
 KERNEL_REPO=git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git
 KERNEL_VERSION=v5.1.10
 BUSYBOX_VERSION=1_33_1
@@ -38,11 +39,14 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     git checkout ${KERNEL_VERSION}
 
     # TODO: Add your kernel build steps here
+    echo "Copy patch"
+    cp ${FINDER_APP_DIR}/0001-Fix-build-failed-kernel-source.patch ./
+    git apply 0001-Fix-build-failed-kernel-source.patch
     echo "Starting build kernel"
-    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} mrproper
-    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} defconfig
-    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all
-    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} dtbs
+    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} mrproper #Delete the current configuration, and all generated files
+    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} defconfig #Get option in kconfig and put into .config
+    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} all # Build all 
+    make -j4 ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} dtbs # Build device tree
     echo "Finish build kernel"
 fi
 
@@ -62,9 +66,8 @@ fi
 echo "Create new base directoroes"
 mkdir -p ${OUTDIR}/rootfs
 cd ${OUTDIR}/rootfs
-mkdir -p bin dev etc home lib lib64 proc sbin sys tmp usr var
+mkdir -p bin dev etc home lib lib64 proc sbin sys tmp usr var conf
 mkdir -p usr/bin usr/lib /usr/sbin var/log 
-
 echo "Clone source busybox"
 cd "$OUTDIR"
 if [ ! -d "${OUTDIR}/busybox" ]
@@ -101,15 +104,21 @@ echo "Create device node"
 sudo mknod -m 666 dev/null c 1 3 #redirect either error or output of a command to this file
 sudo mknod -m 600 dev/console c 5 1 #show messages during startup and shutdown
 # TODO: Clean and build the writer utility
-PATH_FINDER_APP=$(realpath $(dirname $0))
+
 echo "Jump to folder finder-app: ${PATH_FINDER_APP}"
 cd ${PATH_FINDER_APP}
-make clean
-CROSS_COMPILE=aarch64-none-linux-gnu- make
+CROSS_COMPILE=aarch64-none-linux-gnu- make clean
+CROSS_COMPILE=aarch64-none-linux-gnu- make 
+echo "Make binary writer done"
 
 # TODO: Copy the finder related scripts and executables to the /home directory
 # on the target rootfs
-
+cp -r * ${OUTDIR}/rootfs/home/
+cp --parents conf/username.txt conf/assignment.txt ${OUTDIR}/rootfs/home/
+echo "Copy all files done :) "
 # TODO: Chown the root directory
-
+cd ${OUTDIR}/rootfs/
+sudo chown -R root:root *
 # TODO: Create initramfs.cpio.gz
+find . | cpio -H newc -ov --owner root:root > ${OUTDIR}/initramfs.cpio #After chown, use cpio binany to create initramfs from tree folder, and direct output to file .cpio
+gzip -f ../initramfs.cpio

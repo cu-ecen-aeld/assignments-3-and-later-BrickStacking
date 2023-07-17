@@ -1,0 +1,25 @@
+From 321e9ada8430d0b4e8ab98fbaa43c4fd9dc0605b Mon Sep 17 00:00:00 2001
+From: brick <thiencd0801@gmail.com>
+Date: Tue, 18 Jul 2023 00:38:45 +0700
+Subject: [PATCH] Fix build failed kernel source
+
+---
+ scripts/dtc/dtc-lexer.l | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/scripts/dtc/dtc-lexer.l b/scripts/dtc/dtc-lexer.l
+index 06c040902..210fa2f53 100644
+--- a/scripts/dtc/dtc-lexer.l
++++ b/scripts/dtc/dtc-lexer.l
+@@ -38,7 +38,7 @@ LINECOMMENT	"//".*\n
+ #include "srcpos.h"
+ #include "dtc-parser.tab.h"
+ 
+-YYLTYPE yylloc;
++//YYLTYPE yylloc;
+ extern bool treesource_error;
+ 
+ /* CAUTION: this will stop working if we ever use yyless() or yyunput() */
+-- 
+2.34.1
+
