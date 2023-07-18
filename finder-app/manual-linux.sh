@@ -94,11 +94,11 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
 echo "Copy dependencies in gcc folder to rootfs"
-cp -L ${GCC_LIB_PATH}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib/ #Copy loader to lib
-cp -L ${GCC_LIB_PATH}/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib64/ #Copy loader to lib64
-cp -L ${GCC_LIB_PATH}/lib64/libm.so.6  ${OUTDIR}/rootfs/lib64/
-cp -L ${GCC_LIB_PATH}/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64/
-cp -L ${GCC_LIB_PATH}/lib64/libc.so.6 ${OUTDIR}/rootfs/lib64/
+cp -L ${PATH_FINDER_APP}/necessary_lib/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib/ #Copy loader to lib
+cp -L ${PATH_FINDER_APP}/necessary_lib/lib/ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib64/ #Copy loader to lib64
+cp -L ${PATH_FINDER_APP}/necessary_lib/lib64/libm.so.6  ${OUTDIR}/rootfs/lib64/
+cp -L ${PATH_FINDER_APP}/necessary_lib/lib64/libresolv.so.2 ${OUTDIR}/rootfs/lib64/
+cp -L ${PATH_FINDER_APP}/necessary_lib/lib64/libc.so.6 ${OUTDIR}/rootfs/lib64/
 # TODO: Make device nodes
 echo "Create device node"
 sudo mknod -m 666 dev/null c 1 3 #redirect either error or output of a command to this file
