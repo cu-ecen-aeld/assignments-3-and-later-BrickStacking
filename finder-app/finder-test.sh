@@ -15,7 +15,7 @@ then
 	echo "Using default value ${WRITESTR} for string to write"
 	if [ $# -lt 1 ]
 	then
-		echo "Using default value ${NUMFILES} for number of files to write"
+		echo "Using default value ${NUMFILES} for number of files to write" >> assignment4-result.txt
 	else
 		NUMFILES=$1
 	fi	
@@ -27,7 +27,7 @@ fi
 
 MATCHSTR="The number of files are ${NUMFILES} and the number of matching lines are ${NUMFILES}"
 
-echo "Writing ${NUMFILES} files containing string ${WRITESTR} to ${WRITEDIR}"
+echo "Writing ${NUMFILES} files containing string ${WRITESTR} to ${WRITEDIR}" >> assignment4-result.txt
 
 rm -rf "${WRITEDIR}"
 
@@ -43,7 +43,7 @@ then
 	#This issue can also be resolved by using double square brackets i.e [[ ]] instead of using quotes.
 	if [ -d "$WRITEDIR" ]
 	then
-		echo "$WRITEDIR created"
+		echo "$WRITEDIR created"  >> assignment4-result.txt
 	else
 		exit 1
 	fi
@@ -57,7 +57,7 @@ do
 	./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
 done
 
-OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
+OUTPUTSTRING=$(finder.sh "$WRITEDIR" "$WRITESTR")
 
 # remove temporary directories
 rm -rf /tmp/aeld-data
@@ -65,9 +65,9 @@ rm -rf /tmp/aeld-data
 set +e
 echo ${OUTPUTSTRING} | grep "${MATCHSTR}"
 if [ $? -eq 0 ]; then
-	echo "success"
+	echo "success"  >> assignment4-result.txt
 	exit 0
 else
-	echo "failed: expected  ${MATCHSTR} in ${OUTPUTSTRING} but instead found"
+	echo "failed: expected  ${MATCHSTR} in ${OUTPUTSTRING} but instead found"  >> assignment4-result.txt
 	exit 1
 fi
