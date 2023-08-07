@@ -52,7 +52,18 @@ int main(int argc, char **argv) {
     address.sin_port = htons(9000);
     address.sin_addr.s_addr = INADDR_ANY;
     
-    int ret = bind(server_fd, (struct sockaddr *) &address, sizeof(address));
+    int32_t yes=1;
+    int ret = setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, (char*) & yes, sizeof(int32_t));
+    if (ret == -1) {
+        printf("Failed to setsockopt SO_REUSEADDR\n");
+        exit(-1);
+    }
+    ret = setsockopt(server_fd, SOL_SOCKET, SO_REUSEPORT, (char*) & yes, sizeof(int32_t));
+    if (ret == -1) {
+        printf("Failed to setsockopt SO_REUSEPORT\n");
+        exit(-1);
+    }
+    ret = bind(server_fd, (struct sockaddr *) &address, sizeof(address));
     if (ret == -1) {
         printf("Failed to bind\n");
         exit(-1);
@@ -66,6 +77,6 @@ int main(int argc, char **argv) {
         printf("Daemon mode\n");
         //Need to do sth here @@
     } else {
-
+        printf("Invalid arguments\n");
     }
 }
