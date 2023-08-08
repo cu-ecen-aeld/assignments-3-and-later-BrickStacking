@@ -15,18 +15,14 @@
 #define MAX_CONNECTIONS 10
 
 //Variable using
-int client_socket_list[MAX_CONNECTIONS] = {0,};
 int server_fd = 0;
 
 //Handle signal handler first
 void signal_handler(int signo) {
     if (signo == SIGINT || signo == SIGTERM) {
-        printf("Sig interupt or terminate\n");
-        for (int i=0; i<MAX_CONNECTIONS; i++) {
-            if (client_socket_list[i] != 0) {
-                close(client_socket_list[i]);
-            }
-        }
+        openlog("Server", LOG_PID, LOG_USER);
+        syslog(LOG_INFO, "Caught signal, exiting\n");
+        closelog();
         remove(FILE_SAVE_DATA);
         close(server_fd);
         exit(1);
@@ -34,7 +30,64 @@ void signal_handler(int signo) {
 }
 
 void start(){
+    //Init address and socklen
+    struct sockaddr_in client_address;
+    socklen_t client_socklent = sizeof(client_address);
+    memset(&client_address, 0, sizeof(struct sockaddr_in));
+    int client_fd = -1;
+    //Loop in accept new client, handle each client as 
+    while(1){
+        client_fd = accept(server_fd, (struct sockaddr *) &client_address, &client_socklent);
+        if(client_fd == -1){
+            openlog("Server", LOG_PID, LOG_USER);
+            syslog(LOG_INFO, "Client fs is error\n");
+            closelog();
+            continue;
+        }
+        //Use syslog to print ip of client
+        char *client_ip = inet_ntoa(client_address.sin_addr);
+        openlog("Server", LOG_PID, LOG_USER);
+        syslog(LOG_INFO, "Accepted connection from %s\n", client_ip);
+        closelog();
 
+        //Open file to save received data
+        FILE *file = fopen(FILE_SAVE_DATA, "a");
+        if (file == NULL) {
+            perror("ERROR opening file");
+            close(client_fd);
+            continue;
+        }
+
+        int receivedSize = 0;
+        char buffer[MAX_PACKET_SIZE];
+        memset(buffer, '\0', MAX_PACKET_SIZE);
+        while(receivedSize = recv(client_fd, buffer, MAX_PACKET_SIZE, 0) > 0) {
+            //Seeking end of line to write to file
+            char *packet_end = strchr(buffer, '\n');
+            if(packet_end == NULL){ //Still have data
+                continue;
+            } else{
+                size_t packet_size = packet_end - buffer + 1;
+                fwrite(buffer, packet_size, 1, file);
+                break;
+            }
+        }
+
+        //Send back data to client
+        fseek(file, 0, SEEK_SET);
+
+        int sendSize=0;
+        while ((sendSize = fread(buffer, 1, MAX_PACKET_SIZE, file)) > 0) {
+            send(client_fd, buffer, sendSize, 0);
+        }
+
+        fclose(file);
+        close(client_fd);
+
+        openlog("Server", LOG_PID, LOG_USER);
+        syslog(LOG_INFO, "Closed connection from %s", client_ip);
+        closelog();
+    }
 }
 
 int main(int argc, char **argv) {
@@ -68,6 +121,8 @@ int main(int argc, char **argv) {
         printf("Failed to bind\n");
         exit(-1);
     }
+    listen(server_fd, SOCK_STREAM);
+
 
     //Check the mode running
     if (argc == 1) {
