@@ -15,7 +15,8 @@
 #define MAX_CONNECTIONS 10
 
 //Variable using
-int server_fd = 0;
+int server_fd = 0, client_fd = 0;
+char buffer[MAX_PACKET_SIZE];
 
 //Handle signal handler first
 void signal_handler(int signo) {
@@ -30,11 +31,12 @@ void signal_handler(int signo) {
 }
 
 void start(){
+
+    listen(server_fd, SOCK_STREAM);
     //Init address and socklen
     struct sockaddr_in client_address;
     socklen_t client_socklent = sizeof(client_address);
     memset(&client_address, 0, sizeof(struct sockaddr_in));
-    int client_fd = -1;
     //Loop in accept new client, handle each client as 
     while(1){
         client_fd = accept(server_fd, (struct sockaddr *) &client_address, &client_socklent);
@@ -48,37 +50,51 @@ void start(){
         char *client_ip = inet_ntoa(client_address.sin_addr);
         openlog("Server", LOG_PID, LOG_USER);
         syslog(LOG_INFO, "Accepted connection from %s\n", client_ip);
+        printf("Accepted connection from %s\n", client_ip);
         closelog();
 
         //Open file to save received data
-        FILE *file = fopen(FILE_SAVE_DATA, "a");
+        FILE *file = fopen(FILE_SAVE_DATA, "a+");
         if (file == NULL) {
-            perror("ERROR opening file");
+            syslog(LOG_INFO, "Error open file save data");
             close(client_fd);
             continue;
         }
 
-        int receivedSize = 0;
-        char buffer[MAX_PACKET_SIZE];
+        size_t receivedSize = 0;
         memset(buffer, '\0', MAX_PACKET_SIZE);
-        while(receivedSize = recv(client_fd, buffer, MAX_PACKET_SIZE, 0) > 0) {
+        while((receivedSize = recv(client_fd, buffer, MAX_PACKET_SIZE, 0)) > 0) {
             //Seeking end of line to write to file
-            char *packet_end = strchr(buffer, '\n');
-            if(packet_end == NULL){ //Still have data
-                continue;
-            } else{
+            char *packet_end = strchr(buffer, '\n'); //End of 
+            if(packet_end != NULL){ //Seek to end and append
+                if(fseek(file, 0, SEEK_END)){
+                    printf("Error fseek end");
+                    syslog(LOG_INFO, "Error fseek end");
+                    return -1;
+                }
                 size_t packet_size = packet_end - buffer + 1;
                 fwrite(buffer, packet_size, 1, file);
                 break;
+            } else{ //Still have data but not all, temporary put to file
+                fputs(buffer, file);
             }
         }
-
+        printf("Data record in buffer:%s", buffer);
+        fsync(fileno(file)); //Sync after write to file
         //Send back data to client
-        fseek(file, 0, SEEK_SET);
-
-        int sendSize=0;
-        while ((sendSize = fread(buffer, 1, MAX_PACKET_SIZE, file)) > 0) {
-            send(client_fd, buffer, sendSize, 0);
+        if(fseek(file, 0, SEEK_SET)){
+            printf("Error fseek set");
+            syslog(LOG_INFO, "Error fseek set");
+            return -1;
+        }
+        size_t sendSize = 0;
+        while((sendSize=fread(buffer, sizeof(char), 1024, file))>0){
+            printf("Data sending:%s", buffer);
+            int ret =  send(client_fd, buffer, sendSize, 0);
+            if(ret <= 0){
+                printf("Sending back client failed");
+                syslog(LOG_INFO, "Sending back client failed");
+            }
         }
 
         fclose(file);
@@ -103,7 +119,7 @@ int main(int argc, char **argv) {
     memset(&address, 0, sizeof(struct sockaddr_in));
     address.sin_family = AF_INET;
     address.sin_port = htons(9000);
-    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
     
     int32_t yes=1;
     int ret = setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, (char*) & yes, sizeof(int32_t));
@@ -115,23 +131,29 @@ int main(int argc, char **argv) {
     if (ret == -1) {
         printf("Failed to setsockopt SO_REUSEPORT\n");
         exit(-1);
+
     }
     ret = bind(server_fd, (struct sockaddr *) &address, sizeof(address));
     if (ret == -1) {
         printf("Failed to bind\n");
         exit(-1);
     }
-    listen(server_fd, SOCK_STREAM);
-
 
     //Check the mode running
     if (argc == 1) {
         printf("Normal mode\n");
-        start();
     } else if(argc == 2 && strcmp(argv[1],"-d")) {
         printf("Daemon mode\n");
-        //Need to do sth here @@
+        pid_t pid = fork();
+        if(pid == -1)
+        {
+            return -1;
+        } else if (pid != 0){
+            exit(EXIT_SUCCESS);
+        }
     } else {
         printf("Invalid arguments\n");
+        return 0;
     }
+    start();
 }
