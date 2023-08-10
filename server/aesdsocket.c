@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
     //Check the mode running
     if (argc == 1) {
         printf("Normal mode\n");
-    } else if(argc == 2 && strcmp(argv[1],"-d")) {
+    } else if(argc == 2 && strcmp(argv[1], "-d") == 0) {
         printf("Daemon mode\n");
         pid_t pid = fork();
         if(pid == -1)
