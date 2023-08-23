@@ -1,5 +1,5 @@
 CC=$(CROSS_COMPILE)gcc
-CFLAGS=-ggdb -Wall 
+CFLAGS=-ggdb -Wall -pthread
 
 all: aesdsocket.c
 	$(CC) $(CFLAGS) -o aesdsocket aesdsocket.c

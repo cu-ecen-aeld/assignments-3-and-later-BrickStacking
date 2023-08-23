@@ -1,18 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <syslog.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <signal.h>
-
-#define PORT 9000
-#define FILE_SAVE_DATA "/var/tmp/aesdsocketdata"
-#define MAX_PACKET_SIZE 1024
-#define MAX_CONNECTIONS 10
+#include "aesdsocket.h"
 
 //Variable using
 int server_fd = 0, client_fd = 0;
@@ -39,6 +25,9 @@ void start(){
     memset(&client_address, 0, sizeof(struct sockaddr_in));
     //Loop in accept new client, handle each client as 
     while(1){
+
+
+        
         client_fd = accept(server_fd, (struct sockaddr *) &client_address, &client_socklent);
         if(client_fd == -1){
             openlog("Server", LOG_PID, LOG_USER);
@@ -70,7 +59,7 @@ void start(){
                 if(fseek(file, 0, SEEK_END)){
                     printf("Error fseek end");
                     syslog(LOG_INFO, "Error fseek end");
-                    return -1;
+                    return;
                 }
                 size_t packet_size = packet_end - buffer + 1;
                 fwrite(buffer, packet_size, 1, file);
@@ -85,7 +74,7 @@ void start(){
         if(fseek(file, 0, SEEK_SET)){
             printf("Error fseek set");
             syslog(LOG_INFO, "Error fseek set");
-            return -1;
+            return;
         }
         size_t sendSize = 0;
         while((sendSize=fread(buffer, sizeof(char), 1024, file))>0){
