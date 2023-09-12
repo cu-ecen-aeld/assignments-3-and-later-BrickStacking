@@ -3,6 +3,9 @@
 //Variable using
 int server_fd = 0, client_fd = 0;
 char buffer[MAX_PACKET_SIZE];
+pthread_mutex_t mutex_file;
+//Create link-list
+struct slist_thread head; /* Singly linked List head. */
 
 //Handle signal handler first
 void signal_handler(int signo) {
@@ -16,42 +19,22 @@ void signal_handler(int signo) {
     }
 }
 
-void start(){
-
-    listen(server_fd, SOCK_STREAM);
-    //Init address and socklen
-    struct sockaddr_in client_address;
-    socklen_t client_socklent = sizeof(client_address);
-    memset(&client_address, 0, sizeof(struct sockaddr_in));
-    //Loop in accept new client, handle each client as 
-    while(1){
-
-
-        
-        client_fd = accept(server_fd, (struct sockaddr *) &client_address, &client_socklent);
-        if(client_fd == -1){
-            openlog("Server", LOG_PID, LOG_USER);
-            syslog(LOG_INFO, "Client fs is error\n");
-            closelog();
-            continue;
-        }
-        //Use syslog to print ip of client
-        char *client_ip = inet_ntoa(client_address.sin_addr);
-        openlog("Server", LOG_PID, LOG_USER);
-        syslog(LOG_INFO, "Accepted connection from %s\n", client_ip);
-        printf("Accepted connection from %s\n", client_ip);
-        closelog();
+void* client_handler(void *data){
+    if(data != NULL)
+    {
+        struct server_data* server_data_info = (struct server_data*) data;
 
         //Open file to save received data
         FILE *file = fopen(FILE_SAVE_DATA, "a+");
         if (file == NULL) {
             syslog(LOG_INFO, "Error open file save data");
             close(client_fd);
-            continue;
+            // continue;
         }
 
         size_t receivedSize = 0;
         memset(buffer, '\0', MAX_PACKET_SIZE);
+        pthread_mutex_lock(server_data_info->m_file_mutex);
         while((receivedSize = recv(client_fd, buffer, MAX_PACKET_SIZE, 0)) > 0) {
             //Seeking end of line to write to file
             char *packet_end = strchr(buffer, '\n'); //End of 
@@ -70,6 +53,7 @@ void start(){
         }
         printf("Data record in buffer:%s", buffer);
         fsync(fileno(file)); //Sync after write to file
+        pthread_mutex_unlock(server_data_info->m_file_mutex);
         //Send back data to client
         if(fseek(file, 0, SEEK_SET)){
             printf("Error fseek set");
@@ -90,8 +74,54 @@ void start(){
         close(client_fd);
 
         openlog("Server", LOG_PID, LOG_USER);
-        syslog(LOG_INFO, "Closed connection from %s", client_ip);
+        syslog(LOG_INFO, "Closed connection from %s", server_data_info->m_ip_address_client);
         closelog();
+    }
+
+}
+void start(){
+
+    listen(server_fd, SOCK_STREAM);
+    //Init address and socklen
+    struct sockaddr_in client_address;
+    socklen_t client_socklent = sizeof(client_address);
+    //Loop in accept new client, handle each client as 
+    while(1){
+        memset(&client_address, 0, sizeof(struct sockaddr_in));
+        client_fd = accept(server_fd, (struct sockaddr *) &client_address, &client_socklent);
+        if(client_fd == -1){
+            openlog("Server", LOG_PID, LOG_USER);
+            syslog(LOG_INFO, "Client fs is error\n");
+            closelog();
+            continue;
+        }
+        struct server_data *new_server_data, *tmp_server_data;
+        new_server_data = malloc(sizeof(struct server_data));
+        new_server_data->m_send_data_done = false;
+        new_server_data->m_file_mutex = &mutex_file;
+
+        //Add to linked-list
+        SLIST_INSERT_HEAD(&head, new_server_data, entries);
+        pthread_create(&new_server_data->m_thread_id, NULL, client_handler, (void*)new_server_data);
+
+
+        //Use syslog to print ip of client
+        char *client_ip = inet_ntoa(client_address.sin_addr);
+        openlog("Server", LOG_PID, LOG_USER);
+        syslog(LOG_INFO, "Accepted connection from %s\n", client_ip);
+        printf("Accepted connection from %s\n", client_ip);
+        closelog();
+        memset(new_server_data->m_ip_address_client, 0, sizeof(struct sockaddr_in));
+        memcpy(new_server_data->m_ip_address_client, client_ip, sizeof(*client_ip));
+
+        SLIST_FOREACH(tmp_server_data, &head, entries){
+            if(tmp_server_data->m_send_data_done == true){
+                syslog(LOG_INFO, "Thread:%ld is done\n", tmp_server_data->m_thread_id);
+                pthread_join(tmp_server_data->m_thread_id, NULL);
+                SLIST_REMOVE(&head, tmp_server_data, server_data, entries);
+                syslog(LOG_INFO, "Remove element done from list \n"); 
+            }
+        }
     }
 }
 
@@ -99,6 +129,10 @@ int main(int argc, char **argv) {
     //Handle exeption first
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
+
+    
+    SLIST_INIT(&head); /* Initialize the queue. */
+
 
     server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (server_fd == -1) {
