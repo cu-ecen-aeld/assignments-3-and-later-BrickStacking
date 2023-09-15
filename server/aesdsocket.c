@@ -79,6 +79,19 @@ void* client_handler(void *data){
     }
 
 }
+
+void* timer_handler(void *data){
+    if(data != NULL)
+    {
+        struct timestamp_thread* timer_info = (struct server_data*) data;
+        struct timespec ts;
+        struct tm tm;
+        char timestr[100] = {'\0',};
+        
+
+    }
+}
+
 void start(){
 
     listen(server_fd, SOCK_STREAM);
@@ -130,9 +143,12 @@ int main(int argc, char **argv) {
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
-    
     SLIST_INIT(&head); /* Initialize the queue. */
 
+    struct timestamp_thread *new_timestamp;
+    new_timestamp = malloc(sizeof(struct timestamp_thread));
+    new_timestamp->m_file_mutex = &mutex_file;
+    pthread_create(&new_timestamp->m_thread_id, NULL, timer_handler, (void*)new_timestamp);
 
     server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (server_fd == -1) {

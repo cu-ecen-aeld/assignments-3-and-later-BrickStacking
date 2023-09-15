@@ -37,7 +37,7 @@ struct server_data {
 
 SLIST_HEAD(slist_thread, server_data);
 
-struct routine_thread{
+struct timestamp_thread {
     pthread_t m_thread_id;
-    pthread_mutex_t *m_mutex;    
-};
+    pthread_mutex_t *m_file_mutex;
+}
