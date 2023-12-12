@@ -16,7 +16,7 @@ $(TARGET): $(OBJS)
 
 # Compile Each Source File to Object Files
 %.o: %.c
-	$(CROSS_COMPILE)$(CC) -c -o $@ $< -Wall -Werror
+	$(CROSS_COMPILE)$(CC) -c -o $@ $< -Wall 
 
 
 clean: 

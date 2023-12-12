@@ -19,16 +19,18 @@
 #define PORT 9000
 #define FILE_SAVE_DATA "/var/tmp/aesdsocketdata"
 #define MAX_PACKET_SIZE 1024
+#define MAX_TIME_STRING_SIZE 100
 #define MAX_CONNECTIONS 10
 #define MAX_IP_LENGTH   20
 #define MAX_DELAY_TIME  10
-
+#define ERROR_CODE -1
 
 
 struct server_data {
     pthread_t m_thread_id;
     pthread_mutex_t *m_file_mutex;
     int m_client_fd;
+    FILE * data_file_fd;
     bool m_send_data_done;
     char m_ip_address_client[MAX_IP_LENGTH];
     // char m_port_address_client[MAX_IP_LENGTH];
@@ -39,5 +41,6 @@ SLIST_HEAD(slist_thread, server_data);
 
 struct timestamp_thread {
     pthread_t m_thread_id;
+    FILE * data_file_fd;
     pthread_mutex_t *m_file_mutex;
-}
+};
