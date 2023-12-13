@@ -1,7 +1,7 @@
 CC ?= gcc
 CROSS_COMPILE ?=
 
-CFLAGS=-ggdb -Wall -pthread -lpthread -lrt
+CFLAGS= -g -ggdb -Wall -pthread -lpthread -lrt
 
 # Target and Source File Definitions
 TARGET = aesdsocket

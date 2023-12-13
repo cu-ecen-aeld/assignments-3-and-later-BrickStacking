@@ -15,6 +15,8 @@
 #include <pthread.h>
 #include <errno.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/time.h>
 
 #define PORT 9000
 #define FILE_SAVE_DATA "/var/tmp/aesdsocketdata"
@@ -30,17 +32,14 @@ struct server_data {
     pthread_t m_thread_id;
     pthread_mutex_t *m_file_mutex;
     int m_client_fd;
-    FILE * data_file_fd;
+    int data_file_fd;
     bool m_send_data_done;
-    char m_ip_address_client[MAX_IP_LENGTH];
-    // char m_port_address_client[MAX_IP_LENGTH];
+    char *data_receive;
+    char *data_send_back;
     SLIST_ENTRY(server_data) entries;
 };
 
-SLIST_HEAD(slist_thread, server_data);
-
-struct timestamp_thread {
-    pthread_t m_thread_id;
-    FILE * data_file_fd;
+struct timestamp_struct {
     pthread_mutex_t *m_file_mutex;
+    int data_file_fd;
 };
