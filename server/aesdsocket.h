@@ -1,26 +1,28 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdbool.h>
-#include <unistd.h>
-#include <syslog.h>
+#include <string.h>
 #include <sys/types.h>
-#include <stdio.h>
 #include <sys/socket.h>
+#include <netdb.h>
+#include <syslog.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <signal.h>
-#include <sys/queue.h>
-#include <time.h>
-#include <pthread.h>
+#include <getopt.h>
 #include <errno.h>
-#include <unistd.h>
-#include <fcntl.h>
+#include <time.h>
+#include <pthread.h>	
 #include <sys/time.h>
+#include "queue.h"
 
 #define PORT 9000
 #define FILE_SAVE_DATA "/var/tmp/aesdsocketdata"
-#define MAX_PACKET_SIZE 1024
+#define MAX_PACKET_SIZE 500
 #define MAX_TIME_STRING_SIZE 100
 #define MAX_CONNECTIONS 10
 #define MAX_IP_LENGTH   20
